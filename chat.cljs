@@ -32,105 +32,109 @@
 
 (defn handle-code
   [session-id code]
-  (go
-    (try
-      (let [[command data]
-            (string/split code ":")]
-        (condp = command
-          "name"
-          (do (swap! prompt-cache
-                     assoc-in
-                     [session-id :user :name] data)
-              (<p! (firestore/upsert-doc
-                    "chats" session-id
-                    {:name data})))
-          "email"
-          (do (if-not (get-in
-                       @prompt-cache
-                       [session-id :user :email])
-                (<p! (cloud-tasks/create-task
-                      queue-name "send-email"
-                      {:template
-                       "contact-info-shared"
-                       :sid session-id}
-                      wait-to-email-time)))
-              (swap! prompt-cache
-                     assoc-in
-                     [session-id :user :email] data)
-              (<p! (firestore/upsert-doc
-                    "chats" session-id
-                    {:email data})))
-          "name-email"
-          (let [[name email]
-                (string/split data ";")]
-            (if-not (get-in
-                       @prompt-cache
-                       [session-id :user :email])
-              (<p! (cloud-tasks/create-task
-                    queue-name "send-ping-admin-email"
-                    {:session-id session-id}
-                    wait-to-email-time)))
-            (swap! prompt-cache
-                   assoc-in
-                    [session-id :user :name] name)
-            (swap! prompt-cache
-                   assoc-in
-                   [session-id :user :email] email)
-            (<p! (firestore/upsert-doc
-                  "chats" session-id
-                  {:name name :email email})))
-          "concept"
-          (let [chat-doc
-                (<p! (firestore/get-doc
-                      "chats" session-id))
-                updated-concepts
-                (take-last
-                 5 (conj (or (:concepts chat-doc) [])
-                         data))]
-            (swap! prompt-cache
-                   assoc-in
-                   [session-id :user :concepts]
-                   updated-concepts)
-            (<p! (firestore/upsert-doc
-                  "chats" session-id
-                  {:concepts updated-concepts})))
-          "name-opt-out"
-          (do (swap! prompt-cache
-                     assoc-in
-                     [session-id :user
-                      :name-opt-out] true)
-              (swap! prompt-cache
-                     utils/dissoc-in
-                     [session-id :user :name])
-              (<p! (firestore/upsert-doc
-                    "chats" session-id
-                    {:name nil
-                     :name-opt-out true})))
-          "email-opt-out"
-          (do (swap! prompt-cache
-                     assoc-in
-                     [session-id :user
-                      :email-opt-out] true)
-              (swap! prompt-cache
-                     utils/dissoc-in
-                     [session-id :user :email])
-              (<p! (firestore/upsert-doc
-                    "chats" session-id
-                    {:email nil
-                     :email-opt-out true})))
-          "opt-out"
-          (do (swap! prompt-cache
-                     utils/dissoc-in
-                     [session-id :user])
-              (swap! prompt-cache
-                     assoc-in
-                     [session-id :user :opt-out] true)
-              (<p! (firestore/delete-doc "chats" session-id)))
-          nil))
-      (catch :default error
-        (js/console.error
-         "Error handling chatbot response code:"
-         error)))))
+  (p/create
+   (fn [resolve reject]
+     (go
+       (try
+         (let [[command data]
+               (string/split code ":")]
+           (condp = command
+             "name"
+             (do (swap! prompt-cache
+                        assoc-in
+                        [session-id :user :name] data)
+                 (<p! (firestore/upsert-doc
+                       "chats" session-id
+                       {:name data})))
+             "email"
+             (do (if-not (get-in
+                          @prompt-cache
+                          [session-id :user :email])
+                   (<p! (cloud-tasks/create-task
+                         queue-name "send-email"
+                         {:template
+                          "contact-info-shared"
+                          :sid session-id}
+                         wait-to-email-time)))
+                 (swap! prompt-cache
+                        assoc-in
+                        [session-id :user :email] data)
+                 (<p! (firestore/upsert-doc
+                       "chats" session-id
+                       {:email data})))
+             "name-email"
+             (let [[name email]
+                   (string/split data ";")]
+               (if-not (get-in
+                        @prompt-cache
+                        [session-id :user :email])
+                 (<p! (cloud-tasks/create-task
+                       queue-name "send-ping-admin-email"
+                       {:session-id session-id}
+                       wait-to-email-time)))
+               (swap! prompt-cache
+                      assoc-in
+                      [session-id :user :name] name)
+               (swap! prompt-cache
+                      assoc-in
+                      [session-id :user :email] email)
+               (<p! (firestore/upsert-doc
+                     "chats" session-id
+                     {:name name :email email})))
+             "concept"
+             (let [chat-doc
+                   (<p! (firestore/get-doc
+                         "chats" session-id))
+                   updated-concepts
+                   (take-last
+                    5 (conj (or (:concepts chat-doc) [])
+                            data))]
+               (swap! prompt-cache
+                      assoc-in
+                      [session-id :user :concepts]
+                      updated-concepts)
+               (<p! (firestore/upsert-doc
+                     "chats" session-id
+                     {:concepts updated-concepts})))
+             "name-opt-out"
+             (do (swap! prompt-cache
+                        assoc-in
+                        [session-id :user
+                         :name-opt-out] true)
+                 (swap! prompt-cache
+                        utils/dissoc-in
+                        [session-id :user :name])
+                 (<p! (firestore/upsert-doc
+                       "chats" session-id
+                       {:name nil
+                        :name-opt-out true})))
+             "email-opt-out"
+             (do (swap! prompt-cache
+                        assoc-in
+                        [session-id :user
+                         :email-opt-out] true)
+                 (swap! prompt-cache
+                        utils/dissoc-in
+                        [session-id :user :email])
+                 (<p! (firestore/upsert-doc
+                       "chats" session-id
+                       {:email nil
+                        :email-opt-out true})))
+             "opt-out"
+             (do (swap! prompt-cache
+                        utils/dissoc-in
+                        [session-id :user])
+                 (swap! prompt-cache
+                        assoc-in
+                        [session-id :user :opt-out] true)
+                 (<p! (firestore/delete-doc "chats" session-id)))
+             nil)
+           (resolve nil))
+         (catch :default error
+           (js/console.error
+            "Error handling chatbot response code:"
+            error)
+           (reject error)))))))
 
 (defn get-system-prompt
   [session-id file-path]
@@ -295,7 +299,7 @@
             reply (nth matches 1 nil)
             code (nth matches 2 nil)]
         (when code
-          (handle-code session-id code))
+          (<p! (handle-code session-id code)))
         (.send res (t/write t-writer {:reply reply})))
       (catch :default error
         (js/console.error error)
