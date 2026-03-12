@@ -226,19 +226,24 @@
 (defn update-chat-history!
   "Updates the chat history in the cache and Firestore, appending the new user input and bot response."
   [session-id user-input response-text opt-out chat-doc]
-  (go
-    (let [updated-chat-history
-          (take-last
-           20 (into (vec (or (get-in @prompt-cache [session-id :chat-history])
-                             (:chat-history chat-doc) []))
-                    [(str (or (:name chat-doc)
-                              (:email chat-doc)
-                              session-id) ": " user-input)
-                     (str BOT_NAME ": " response-text)]))]
-      (swap! prompt-cache assoc-in [session-id :chat-history] updated-chat-history)
-      (if opt-out
-        (swap! prompt-cache utils/dissoc-in [session-id :user]))
-      (<p! (firestore/upsert-doc "chats" session-id {:chat-history updated-chat-history})))))
+  (p/create
+   (fn [resolve reject]
+     (go
+       (try
+         (let [updated-chat-history
+               (take-last
+                20 (into (vec (or (get-in @prompt-cache [session-id :chat-history])
+                                  (:chat-history chat-doc) []))
+                         [(str (or (:name chat-doc)
+                                   (:email chat-doc)
+                                   session-id) ": " user-input)
+                          (str BOT_NAME ": " response-text)]))]
+           (swap! prompt-cache assoc-in [session-id :chat-history] updated-chat-history)
+           (if opt-out
+             (swap! prompt-cache utils/dissoc-in [session-id :user]))
+           (<p! (firestore/upsert-doc "chats" session-id {:chat-history updated-chat-history}))
+           (resolve nil))
+         (catch :default e (reject e)))))))
 
 (defn generate-response
   "Generates a response from the Gemini AI based on the user's input and session context."
