@@ -150,7 +150,7 @@
          (if opt-out
            ". They've asked to delete all the data we have persisted. Tell them we have done so.")
          (if (and (not opt-out) user-name (not user-email) (not email-opt-out))
-           (str " but we dont have an email yet. Ask nicely for their email and also indicate it's not mandatory.")))
+           (str " but we dont have an email yet. Ask nicely for their email and also indicate it's not mandatory."))
          (if (and (not opt-out)
                   user-name
                   (not user-email)
