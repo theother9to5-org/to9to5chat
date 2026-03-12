@@ -178,10 +178,10 @@
          "\n\n"
          (if user-name
            (str "The potential customer you are conversating with is"
-                user-name))
+                user-name " (do not ask for their name)"))
          (if (and user-name user-email)
            (str " and email is "
-                user-email))
+                user-email " (do not ask for their email)"))
          (if opt-out
            ". They've asked to delete all the data we have persisted. Tell them we have done so.")
          (if (and (not opt-out) user-name (not user-email) (not email-opt-out))
@@ -196,8 +196,9 @@
                   (not name-opt-out))
            (str "The potential customer email is "
                 user-email
-                " and you dont have their name yet. Ask nicely for their "
-                " name so we can link it to the email also indicate it's not necessary."))
+                " and you do not have their name yet. Ask nicely for their"
+                " name when it makes sense to do so. Stating the reason for asking"
+                " for their name is to link it to the email. Also indicate this is not necessary."))
          (if (and (not opt-out)
                   (not user-name)
                   user-email
