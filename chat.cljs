@@ -33,62 +33,97 @@
 (defn handle-name-code
   "Updates the user's name in the cache and Firestore."
   [session-id data]
-  (go
-    (swap! prompt-cache assoc-in [session-id :user :name] data)
-    (<p! (firestore/upsert-doc "chats" session-id {:name data}))))
+  (p/create
+   (fn [resolve reject]
+     (go
+       (try
+         (swap! prompt-cache assoc-in [session-id :user :name] data)
+         (<p! (firestore/upsert-doc "chats" session-id {:name data}))
+         (resolve nil)
+         (catch :default e (reject e)))))))
 
 (defn handle-email-code
   "Updates the user's email in the cache and Firestore, and schedules an email task if one wasn't already set."
   [session-id data]
-  (go
-    (if-not (get-in @prompt-cache [session-id :user :email])
-      (<p! (cloud-tasks/create-task queue-name "send-email" {:template "contact-info-shared" :sid session-id} wait-to-email-time)))
-    (swap! prompt-cache assoc-in [session-id :user :email] data)
-    (<p! (firestore/upsert-doc "chats" session-id {:email data}))))
+  (p/create
+   (fn [resolve reject]
+     (go
+       (try
+         (if-not (get-in @prompt-cache [session-id :user :email])
+           (<p! (cloud-tasks/create-task queue-name "send-email" {:template "contact-info-shared" :sid session-id} wait-to-email-time)))
+         (swap! prompt-cache assoc-in [session-id :user :email] data)
+         (<p! (firestore/upsert-doc "chats" session-id {:email data}))
+         (resolve nil)
+         (catch :default e (reject e)))))))
 
 (defn handle-name-email-code
   "Updates both name and email in the cache and Firestore, scheduling an admin ping email if no email was previously set."
   [session-id data]
-  (go
-    (let [[name email] (string/split data ";")]
-      (if-not (get-in @prompt-cache [session-id :user :email])
-        (<p! (cloud-tasks/create-task queue-name "send-ping-admin-email" {:session-id session-id} wait-to-email-time)))
-      (swap! prompt-cache assoc-in [session-id :user :name] name)
-      (swap! prompt-cache assoc-in [session-id :user :email] email)
-      (<p! (firestore/upsert-doc "chats" session-id {:name name :email email})))))
+  (p/create
+   (fn [resolve reject]
+     (go
+       (try
+         (let [[name email] (string/split data ";")]
+           (if-not (get-in @prompt-cache [session-id :user :email])
+             (<p! (cloud-tasks/create-task queue-name "send-ping-admin-email" {:session-id session-id} wait-to-email-time)))
+           (swap! prompt-cache assoc-in [session-id :user :name] name)
+           (swap! prompt-cache assoc-in [session-id :user :email] email)
+           (<p! (firestore/upsert-doc "chats" session-id {:name name :email email})))
+         (resolve nil)
+         (catch :default e (reject e)))))))
 
 (defn handle-concept-code
   "Appends a new concept to the user's list of concepts, keeping the last 5, and updates cache and Firestore."
   [session-id data]
-  (go
-    (let [chat-doc (<p! (firestore/get-doc "chats" session-id))
-          updated-concepts (take-last 5 (conj (or (:concepts chat-doc) []) data))]
-      (swap! prompt-cache assoc-in [session-id :user :concepts] updated-concepts)
-      (<p! (firestore/upsert-doc "chats" session-id {:concepts updated-concepts})))))
+  (p/create
+   (fn [resolve reject]
+     (go
+       (try
+         (let [chat-doc (<p! (firestore/get-doc "chats" session-id))
+               updated-concepts (take-last 5 (conj (or (:concepts chat-doc) []) data))]
+           (swap! prompt-cache assoc-in [session-id :user :concepts] updated-concepts)
+           (<p! (firestore/upsert-doc "chats" session-id {:concepts updated-concepts})))
+         (resolve nil)
+         (catch :default e (reject e)))))))
 
 (defn handle-name-opt-out-code
   "Marks the user as having opted out of providing a name in the cache and Firestore."
   [session-id]
-  (go
-    (swap! prompt-cache assoc-in [session-id :user :name-opt-out] true)
-    (swap! prompt-cache utils/dissoc-in [session-id :user :name])
-    (<p! (firestore/upsert-doc "chats" session-id {:name nil :name-opt-out true}))))
+  (p/create
+   (fn [resolve reject]
+     (go
+       (try
+         (swap! prompt-cache assoc-in [session-id :user :name-opt-out] true)
+         (swap! prompt-cache utils/dissoc-in [session-id :user :name])
+         (<p! (firestore/upsert-doc "chats" session-id {:name nil :name-opt-out true}))
+         (resolve nil)
+         (catch :default e (reject e)))))))
 
 (defn handle-email-opt-out-code
   "Marks the user as having opted out of providing an email in the cache and Firestore."
   [session-id]
-  (go
-    (swap! prompt-cache assoc-in [session-id :user :email-opt-out] true)
-    (swap! prompt-cache utils/dissoc-in [session-id :user :email])
-    (<p! (firestore/upsert-doc "chats" session-id {:email nil :email-opt-out true}))))
+  (p/create
+   (fn [resolve reject]
+     (go
+       (try
+         (swap! prompt-cache assoc-in [session-id :user :email-opt-out] true)
+         (swap! prompt-cache utils/dissoc-in [session-id :user :email])
+         (<p! (firestore/upsert-doc "chats" session-id {:email nil :email-opt-out true}))
+         (resolve nil)
+         (catch :default e (reject e)))))))
 
 (defn handle-opt-out-code
   "Deletes the user's chat data and marks them as opted out."
   [session-id]
-  (go
-    (swap! prompt-cache utils/dissoc-in [session-id :user])
-    (swap! prompt-cache assoc-in [session-id :user :opt-out] true)
-    (<p! (firestore/delete-doc "chats" session-id))))
+  (p/create
+   (fn [resolve reject]
+     (go
+       (try
+         (swap! prompt-cache utils/dissoc-in [session-id :user])
+         (swap! prompt-cache assoc-in [session-id :user :opt-out] true)
+         (<p! (firestore/delete-doc "chats" session-id))
+         (resolve nil)
+         (catch :default e (reject e)))))))
 
 (defn handle-code
   "Dispatches to the appropriate code handler based on the command extracted from the code string."
