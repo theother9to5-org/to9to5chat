@@ -1,0 +1,23 @@
+# Editor artifacts
+*.*~
+.#*
+*#
+
+# Development artifacts
+*.log
+
+# Production build
+index.js
+
+# Environment
+.gcloudignore
+
+# Node.js dependencies:
+package-lock.json
+node_modules/
+yarn.lock
+
+# Creds
+credentials/
+gemini-ai.json
+
