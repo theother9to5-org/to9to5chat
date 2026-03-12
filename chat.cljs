@@ -65,11 +65,11 @@
        (try
          (let [[name email] (string/split data ";")]
            (if-not (get-in @prompt-cache [session-id :user :email])
-             (<p! (cloud-tasks/create-task queue-name "send-ping-admin-email" {:template "contact-info-shared" :sid session-id} wait-to-email-time)))
+             (<p! (cloud-tasks/create-task queue-name "send-email" {:template "contact-info-shared" :sid session-id} wait-to-email-time)))
            (swap! prompt-cache assoc-in [session-id :user :name] name)
            (swap! prompt-cache assoc-in [session-id :user :email] email)
-           (<p! (firestore/upsert-doc "chats" session-id {:name name :email email}))
-           (resolve nil))
+           (<p! (firestore/upsert-doc "chats" session-id {:name name :email email})))
+         (resolve nil))
          (catch :default e (reject e)))))))
 
 (defn handle-concept-code
