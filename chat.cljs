@@ -271,7 +271,7 @@
            (resolve response-text))
          (catch js/Error e
            (js/console.error "Gemini API Error:" e)
-           (resolve "Sorry, I am experiencing technical difficulties.")))))))
+           (resolve "Sorry, I am experiencing technical difficulties. []")))))))
 
 (defn ^:export chat
   "Cloud function entry point for handling chat requests."
