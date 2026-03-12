@@ -69,7 +69,7 @@
            (swap! prompt-cache assoc-in [session-id :user :name] name)
            (swap! prompt-cache assoc-in [session-id :user :email] email)
            (<p! (firestore/upsert-doc "chats" session-id {:name name :email email})))
-         (resolve nil))
+         (resolve nil)
          (catch :default e (reject e)))))))
 
 (defn handle-concept-code
