@@ -25,6 +25,7 @@
 
 (defonce ai-client (atom nil))
 (defonce pattern #"(.*)\[([^\]]*)\]$")
+(defonce system-prompt-cache (atom nil))
 (defonce prompt-cache (atom {}))
 
 (defonce wait-to-email-time (* 7 60)) ; minutes
@@ -119,7 +120,7 @@
    (fn [resolve reject]
      (go
        (try
-         (swap! prompt-cache utils/dissoc-in [session-id :user])
+         (swap! prompt-cache dissoc session-id)
          (swap! prompt-cache assoc-in [session-id :user :opt-out] true)
          (<p! (firestore/delete-doc "chats" session-id))
          (resolve nil)
@@ -156,9 +157,13 @@
        (try
          (if-let [cached-prompt (get @prompt-cache session-id)]
            (resolve cached-prompt)
-           (let [system-prompt (.readFileSync fs file-path "utf-8")
+           (let [system-prompt
+                 (or @system-prompt-cache
+                     (.readFileSync fs file-path "utf-8"))
                  user-info (<p! (firestore/get-doc "chats" session-id))
                  prompt {:system-prompt system-prompt :user user-info}]
+             (if-not @system-prompt-cache
+               (reset! system-prompt-cache system-prompt))
              (swap! prompt-cache assoc session-id prompt)
              (resolve prompt)))
          (catch :default error
