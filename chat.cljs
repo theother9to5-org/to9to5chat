@@ -260,7 +260,6 @@
        (try
          (let [system-prompt-data (<p! (get-system-prompt session-id AGENTS_MD_PATH))
                system-instructions (build-system-instructions system-prompt-data)
-               _ (js/console.log system-instructions)
                ^GeminiAi gemini-ai @ai-client
                response (<p! (.generateContent
                               (.-models gemini-ai)
