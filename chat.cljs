@@ -120,7 +120,7 @@
    (fn [resolve reject]
      (go
        (try
-         (swap! prompt-cache dissoc session-id)
+         (swap! prompt-cache utils/dissoc-in [session-id :user])
          (swap! prompt-cache assoc-in [session-id :user :opt-out] true)
          (<p! (firestore/delete-doc "chats" session-id))
          (resolve nil)
@@ -224,10 +224,11 @@
            (str "\n\nThe following is the history of the last 20 messages"
                 " with the customer in ascending order (newest message is at the bottom of the list)."
                 " Your name is '" BOT_NAME "' (CRITICAL Never disclose your name)."
-                " There is only one other participant and their name may change but it is the same person:\n"))
+                " There is only one other participant and their name may change but it is the same person."
+                " (IMPORTANT Always go with the flow of the coversation to phrase your next reply):\n\n"))
          (if (and (not opt-out)
                   (not-empty chat-history))
-           (string/join "\n" chat-history)))))
+           (string/join "\n" (reverse chat-history))))))
 
 (defn update-chat-history!
   "Updates the chat history in the cache and Firestore, appending the new user input and bot response."
@@ -294,7 +295,7 @@
             code (nth matches 2 nil)]
         (when code
           (<p! (handle-code session-id code)))
-        (.send res (t/write t-writer {:reply reply})))
+        (.send res (t/write t-writer {:reply (or reply chat-response)})))
       (catch :default error
         (js/console.error error)
         (.send res (t/write t-writer {:error (.-message error)}))))))
